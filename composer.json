@@ -1,0 +1,19 @@
+{
+  "name": "drupal/saml_idp",
+  "description": "A module to provide SAML IdP",
+  "type": "drupal-module",
+  "license": "GPL-2.0+",
+  "keywords": ["user access", "authentication"],
+  "homepage": "https://www.drupal.org/sandbox/bradjones1/2596787",
+  "minimum-stability": "dev",
+  "authors": [
+    {
+      "name": "Brad Jones"
+    }
+  ],
+  "require": {
+    "openid/php-openid": "dev-master#ee669c6a9d4d95b58ecd9b6945627276807694fb as 2.2.2",
+    "simplesamlphp/simplesamlphp": "1.13.*"
+  }
+}
+

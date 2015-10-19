@@ -1,0 +1,6 @@
+name: Syslog JSON
+type: module
+description: 'Logs and records system events to syslog via JSON.'
+package: Logging
+version: 1.x
+core: 8.x
