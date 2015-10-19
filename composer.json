@@ -1,6 +1,6 @@
 {
   "name": "drupal/saml_idp",
-  "description": "A module to provide SAML IdP",
+  "description": "Provides SAML IdP authentication support",
   "type": "drupal-module",
   "license": "GPL-2.0+",
   "keywords": ["user access", "authentication"],

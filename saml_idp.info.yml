@@ -1,6 +1,6 @@
-name: Syslog JSON
+name: SAML IdP
 type: module
-description: 'Logs and records system events to syslog via JSON.'
-package: Logging
+description: 'Provides SAML IdP authentication support'
+package: Web Services
 version: 1.x
 core: 8.x
