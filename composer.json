@@ -14,6 +14,8 @@
   "require": {
     "openid/php-openid": "dev-master#ee669c6a9d4d95b58ecd9b6945627276807694fb as 2.2.2",
     "simplesamlphp/simplesamlphp": "1.13.*"
+  },
+  "autoload": {
+    "classmap": ["src/Auth/Source"]
   }
 }
-

@@ -1,28 +1,24 @@
 <?php
 
+// This class is not namespaced as simplesamlphp does not namespace its classes.
+
 /**
  * Drupalath authentication source for using Drupal's login page.
  *
- * Copyright SIL International, Steve Moitozo, <steve_moitozo@sil.org>, http://www.sil.org
+ * Original author: SIL International, Steve Moitozo, <steve_moitozo@sil.org>, http://www.sil.org
  *
  * This class is an authentication source which is designed to
  * more closely integrate with a Drupal site. It causes the user to be
  * delivered to Drupal's login page, if they are not already authenticated.
  *
+ * Original source: http://code.google.com/p/drupalauth/
  *
- * The homepage of this project: http://code.google.com/p/drupalauth/
- *
- * !!! NOTE WELLL !!!
+ * !!! NOTE !!!
  *
  * You must configure store.type in config/config.php to be something
  * other than phpsession, or this module will not work. SQL and memcache
  * work just fine. The tell tail sign of the problem is infinite browser
  * redirection when the SimpleSAMLphp login page should be presented.
- *
- *
- * You must install the drupalauth4ssp module into Drupal to complete the
- * login integration, since this class will send users to the Drupal login
- * page to authenticate instead of presenting a SimpleSAMLphp login page.
  *
  * -------------------------------------------------------------------
  *
@@ -79,11 +75,6 @@
  *  returned after authentication. You can use the same value in both or you can
  *  customize by putting something different in for 'callit'. For an example,
  *  look at the entry for name above.
- *
- *
- * @author Steve Moitozo <steve_moitozo@sil.org>, SIL International
- * @package drupalauth
- * @version $Id$
  */
 class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
 
