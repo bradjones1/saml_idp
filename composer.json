@@ -17,5 +17,9 @@
   },
   "autoload": {
     "classmap": ["src/Auth/Source"]
+    "psr-4"
+  },
+  "scripts" : {
+    "post-install-cmd": ["scripts/post-install.php"]
   }
 }
