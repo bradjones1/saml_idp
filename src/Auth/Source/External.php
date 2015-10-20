@@ -2,10 +2,14 @@
 
 // This class is not namespaced as simplesamlphp does not namespace its classes.
 
+use Drupal\Core\DrupalKernel;
+use Symfony\Component\HttpFoundation\Request;
+
 /**
  * Drupalath authentication source for using Drupal's login page.
  *
  * Original author: SIL International, Steve Moitozo, <steve_moitozo@sil.org>, http://www.sil.org
+ * Modified by: Brad Jones, <brad@bradjonesllc.com>, http://bradjonesllc.com
  *
  * This class is an authentication source which is designed to
  * more closely integrate with a Drupal site. It causes the user to be
@@ -118,6 +122,27 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
    */
   private $drupal_login_url;
 
+  /**
+   * Dependency injection container
+   */
+  private $container;
+
+  /**
+   * Bootstrap Drupal, e.g., if we're being called from simplesamlphp.
+   * @see index.php
+   */
+  private function bootstrap() {
+    try {
+      $this->container = \Drupal::getContainer();
+    }
+    catch (Exception $e) {
+      $classloader = require $this->drupalroot . '/autoload.php';
+      $request = Request::createFromGlobals();
+      $kernel = DrupalKernel::createFromRequest($request, $classloader, 'prod');
+      $this->container = $kernel->boot()->getContainer();
+    }
+  }
+
 	/**
 	 * Constructor for this authentication source.
 	 *
@@ -131,45 +156,19 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
     /* Call the parent constructor first, as required by the interface. */
     parent::__construct($info, $config);
 
-
     /* Get the configuration for this module */
     $drupalAuthConfig = new sspmod_drupalauth_ConfigHelper($config,
       'Authentication source ' . var_export($this->authId, TRUE));
-
     $this->debug       = $drupalAuthConfig->getDebug();
     $this->attributes  = $drupalAuthConfig->getAttributes();
     $this->cookie_name = $drupalAuthConfig->getCookieName();
     $this->drupal_logout_url = $drupalAuthConfig->getDrupalLogoutURL();
     $this->drupal_login_url = $drupalAuthConfig->getDrupalLoginURL();
-
-    if (!defined('DRUPAL_ROOT')) {
-      define('DRUPAL_ROOT', $drupalAuthConfig->getDrupalroot());
-    }
-
     $ssp_config = SimpleSAML_Configuration::getInstance();
     $this->cookie_path = '/' . $ssp_config->getValue('baseurlpath');
     $this->cookie_salt = $ssp_config->getValue('secretsalt');
-
-    $a = getcwd();
-    chdir(DRUPAL_ROOT);
-
-    /* Include the Drupal bootstrap */
-    //require_once(DRUPAL_ROOT.'/includes/common.inc');
-    require_once(DRUPAL_ROOT.'/includes/bootstrap.inc');
-    require_once(DRUPAL_ROOT.'/includes/file.inc');
-
-    /* Using DRUPAL_BOOTSTRAP_FULL means that SimpleSAMLphp must use an session storage
-     * mechanism other than phpsession (see: store.type in config.php). However, this trade-off
-     * prevents the need for hackery here and makes this module work better in different environments.
-     */
-    drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
-
-    // we need to be able to call Drupal user function so we load some required modules
-    drupal_load('module', 'system');
-    drupal_load('module', 'user');
-    drupal_load('module', 'field');
-
-    chdir($a);
+    $this->drupalroot = $drupalAuthConfig->getDrupalroot();
+    $this->bootstrap();
   }
 
 

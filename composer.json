@@ -16,7 +16,7 @@
     "simplesamlphp/simplesamlphp": "1.13.*"
   },
   "autoload": {
-    "classmap": ["src/Auth/Source"],
+    "classmap": ["src/Auth/"],
     "psr-4": { "Drupal\\saml_idp\\": "src/" }
   },
   "scripts" : {
