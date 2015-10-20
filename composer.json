@@ -16,7 +16,8 @@
     "simplesamlphp/simplesamlphp": "1.13.*"
   },
   "autoload": {
-    "classmap": ["src/Auth/Source"]
+    "classmap": ["src/Auth/Source"],
+    "psr-4": ["src"]
   },
   "scripts" : {
     "post-install-cmd": ["scripts/post-install.php"]
