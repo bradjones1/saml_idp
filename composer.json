@@ -17,7 +17,7 @@
   },
   "autoload": {
     "classmap": ["src/Auth/Source"],
-    "psr-4": ["src"]
+    "psr-4": ["Drupal\\saml_idp", "src"]
   },
   "scripts" : {
     "post-install-cmd": ["scripts/post-install.php"]
