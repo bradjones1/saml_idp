@@ -31,9 +31,6 @@ use Symfony\Component\HttpFoundation\Request;
  *  'drupal-userpass' => array(
  *    'drupalauth:External',
  *
- *    // The filesystem path of the Drupal directory.
- *    'drupalroot' => '/var/www/drupal-7.0',
- *
  *    // Whether to turn on debug
  *    'debug' => true,
  *
@@ -88,11 +85,6 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
   private $debug;
 
   /**
-   * The Drupal installation directory
-   */
-  private $drupalroot;
-
-  /**
    * The Drupal user attributes to use, NULL means use all available
    */
   private $attributes;
@@ -136,10 +128,30 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
       $this->container = \Drupal::getContainer();
     }
     catch (Exception $e) {
-      $classloader = require $this->drupalroot . '/autoload.php';
+      // If we're here, this script is being called from simplesamlphp, not Drupal.
+      // We will find the autoloader, then, relative to that library.
+      $pwd = getcwd(); // This would be the www directory for simplesamlphp.
+      // Below is adapted from SSP's autoloader script.
+      // SSP is loaded as a library.
+      if (file_exists($pwd . '/../../../autoload.php')) {
+        $classloader = require $pwd . '/../../../autoload.php';
+        // @todo - Catch a failed import.
+      }
       $request = Request::createFromGlobals();
+      // The REQUEST_URI of the current request is meaningless. Override.
+      // @see http://stackoverflow.com/a/22484670/4447064
+      $request->server->set('REQUEST_URI', '/');
       $kernel = DrupalKernel::createFromRequest($request, $classloader, 'prod');
-      $this->container = $kernel->boot()->getContainer();
+      // @todo - Early test on module enabled or not.
+
+      // We change directories to the Drupal root, now that we can detect it.
+      // Drupal may try to find/save files to paths relative to the root.
+      // Must get it off $kernel as we can't get at the container, yet.
+      chdir($kernel->getAppRoot());
+      $kernel->handle($request);
+      $user = \Drupal::currentUser();
+      chdir($pwd);
+      $this->container = $kernel->getContainer();
     }
   }
 
@@ -167,7 +179,7 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
     $ssp_config = SimpleSAML_Configuration::getInstance();
     $this->cookie_path = '/' . $ssp_config->getValue('baseurlpath');
     $this->cookie_salt = $ssp_config->getValue('secretsalt');
-    $this->drupalroot = $drupalAuthConfig->getDrupalroot();
+
     $this->bootstrap();
   }
 
@@ -178,106 +190,14 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
 	 * @return array|NULL  The user's attributes, or NULL if the user isn't authenticated.
 	 */
 	private function getUser() {
-
-    $drupaluid          = NULL;
-
-    // pull the Drupal uid out of the cookie
-    if(isset($_COOKIE[$this->cookie_name]) && $_COOKIE[$this->cookie_name]) {
-      $strCookie = $_COOKIE[$this->cookie_name];
-      $arrCookie = explode(':',$strCookie);
-
-      // make sure the hash matches
-      // make sure the UID is passed
-      if( (isset($arrCookie[0]) && $arrCookie[0]) && (isset($arrCookie[1]) && $arrCookie[1]) ) {
-
-        // Make sure no one manipulated the hash or the uid in the cookie before we trust the uid
-        if(sha1($this->cookie_salt . $arrCookie[1]) == $arrCookie[0]) {
-            $drupaluid = $arrCookie[1];
-        } else {
-            throw new SimpleSAML_Error_Exception('Cookie hash invalid. This indicates either tampering or an out of date drupal4ssp module.');
-        }
-      }
-
+    $user = $this->container->get('current_user');
+    if ($user instanceof Drupal\Core\Session\AccountProxy) {
+      return array(
+        'uid' => array($user->getUsername()),
+        'displayName' => array($user->getDisplayName()),
+      );
     }
-
-
-    // Delete the cookie, we don't need it anymore
-    if(isset($_COOKIE[$this->cookie_name])) {
-      setcookie($this->cookie_name, "", time() - 3600, $this->cookie_path);
-    }
-
-    if (!empty($drupaluid)) {
-
-      $a = getcwd();
-      chdir(DRUPAL_ROOT);
-
-      // load the user object from Drupal
-      $drupaluser = user_load($drupaluid);
-
-      chdir($a);
-
-      // get all the attributes out of the user object
-      $userAttrs = get_object_vars($drupaluser);
-
-      // define some variables to use as arrays
-      $userAttrNames = null;
-      $attributes = null;
-
-      // figure out which attributes to include
-      if(NULL == $this->attributes){
-        $userKeys = array_keys($userAttrs);
-
-        // populate the attribute naming array
-        foreach($userKeys as $userKey){
-            $userAttrNames[$userKey] = $userKey;
-        }
-
-      }else{
-        // populate the array of attribute keys
-        // populate the attribute naming array
-        foreach($this->attributes as $confAttr){
-
-            $userKeys[] = $confAttr['drupaluservar'];
-            $userAttrNames[$confAttr['drupaluservar']] = $confAttr['callit'];
-
-        }
-
-      }
-
-      // an array of the keys that should never be included
-      // (e.g., pass)
-      $skipKeys = array('pass');
-
-      // package up the user attributes
-      foreach($userKeys as $userKey){
-
-        // skip any keys that should never be included
-        if(!in_array($userKey, $skipKeys)){
-
-          if(   is_string($userAttrs[$userKey])
-            || is_numeric($userAttrs[$userKey])
-            || is_bool($userAttrs[$userKey])    ){
-
-            $attributes[$userAttrNames[$userKey]] = array($userAttrs[$userKey]);
-
-          }elseif(is_array($userAttrs[$userKey])){
-
-            // if the field is a field module field, special handling is required
-            if(substr($userKey,0,6) == 'field_'){
-                $attributes[$userAttrNames[$userKey]] = array($userAttrs[$userKey]['und'][0]['safe_value']);
-            }else{
-            // otherwise treat it like a normal array
-                $attributes[$userAttrNames[$userKey]] = $userAttrs[$userKey];
-            }
-          }
-
-        }
-
-      }
-    }
-
-    return $attributes;
-
+    return NULL;
 	}
 
 
