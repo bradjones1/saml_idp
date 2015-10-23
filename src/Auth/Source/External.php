@@ -130,11 +130,12 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
     catch (Exception $e) {
       // If we're here, this script is being called from simplesamlphp, not Drupal.
       // We will find the autoloader, then, relative to that library.
-      $pwd = getcwd(); // This would be the www directory for simplesamlphp.
+      $pwd = getcwd();
+      $autoloader = substr($pwd, 0, strpos($pwd, 'simplesamlphp/www')) . '../autoload.php';
       // Below is adapted from SSP's autoloader script.
       // SSP is loaded as a library.
-      if (file_exists($pwd . '/../../../autoload.php')) {
-        $classloader = require $pwd . '/../../../autoload.php';
+      if (file_exists($autoloader)) {
+        $classloader = require $autoloader;
         // @todo - Catch a failed import.
       }
       $request = Request::createFromGlobals();
@@ -190,8 +191,8 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
 	 * @return array|NULL  The user's attributes, or NULL if the user isn't authenticated.
 	 */
 	private function getUser() {
-    $user = $this->container->get('current_user');
-    if ($user instanceof Drupal\Core\Session\AccountProxy) {
+    $user = $this->container->get('current_user')->getAccount();
+    if ($user->id() != 0) {
       return array(
         'uid' => array($user->getUsername()),
         'displayName' => array($user->getDisplayName()),
@@ -209,8 +210,7 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
 	public function authenticate(&$state) {
 		assert('is_array($state)');
 
-		$attributes = $this->getUser();
-		if ($attributes !== NULL) {
+		if ($attributes = $this->getUser()) {
 			/*
 			 * The user is already authenticated.
 			 *
@@ -232,7 +232,6 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
 		 */
 		$state['drupalauth:AuthID'] = $this->authId;
 
-
 		/*
 		 * We need to save the $state-array, so that we can resume the
 		 * login process after authentication.
@@ -241,10 +240,9 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
 		 * unique identifier for where the state was saved, and must be used
 		 * again when we retrieve the state.
 		 *
-		 * The reason for it is to prevent
-		 * attacks where the user takes a $state-array saved in one location
-		 * and restores it in another location, and thus bypasses steps in
-		 * the authentication process.
+		 * The reason for it is to prevent attacks where the user takes a
+		 * $state-array saved in one location and restores it in another location,
+		 * and thus bypasses steps in the authentication process.
 		 */
 		$stateId = SimpleSAML_Auth_State::saveState($state, 'drupalauth:External');
 
@@ -252,11 +250,12 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
 		 * Now we generate an URL the user should return to after authentication.
 		 * We assume that whatever authentication page we send the user to has an
 		 * option to return the user to a specific page afterwards.
+		 *
+		 * Drupal will not redirect to an external URL. So, build a relative one.
 		 */
-		$returnTo = SimpleSAML_Module::getModuleURL('drupalauth/resume.php', array(
-			'State' => $stateId,
-		));
-
+    $globalConfig = SimpleSAML_Configuration::getInstance();
+    $baseURL = $globalConfig->getString('baseurlpath', 'simplesaml/');
+    $returnTo = '/' . $baseURL . 'drupalauth/resume.php?State=' . $stateId;
 		/*
 		 * Get the URL of the authentication page.
 		 *
@@ -264,7 +263,7 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
 		 * is also part of this module, but in a real example, this would likely be
 		 * the absolute URL of the login page for the site.
 		 */
-		$authPage = $this->drupal_login_url . '?ReturnTo=' . $returnTo;
+    $login = \Drupal::url('user.login', array(), array('absolute' => TRUE));
 
 		/*
 		 * The redirect to the authentication page.
@@ -272,8 +271,8 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
 		 * Note the 'ReturnTo' parameter. This must most likely be replaced with
 		 * the real name of the parameter for the login page.
 		 */
-		SimpleSAML_Utilities::redirect($authPage, array(
-			'ReturnTo' => $returnTo,
+		SimpleSAML_Utilities::redirectTrustedURL($login, array(
+			'destination' => $returnTo,
 		));
 
 		/*
@@ -281,7 +280,6 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
 		 */
 		assert('FALSE');
 	}
-
 
 	/**
 	 * Resume authentication process.

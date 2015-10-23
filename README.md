@@ -20,6 +20,9 @@ module and as such does not, out of the box, provide any working functionality.
   of hostname and base path to create cookie names, which is not helpful when
   Drupal is being run inside another application. Drupal provides a commented-out
   default with good documentation.
+1. SimpleSAMLphp itself requires extensive configuration, including private key
+  generation and the specification of service providers. See [the IdP QuickStart](https://simplesamlphp.org/docs/stable/simplesamlphp-idp)
+  documentation for more information.
 
 ### Developer notes
 - The autoloader configuration in `composer.json` is required because, while
