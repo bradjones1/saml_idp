@@ -16,103 +16,8 @@ use Symfony\Component\HttpFoundation\Request;
  * delivered to Drupal's login page, if they are not already authenticated.
  *
  * Original source: http://code.google.com/p/drupalauth/
- *
- * !!! NOTE !!!
- *
- * You must configure store.type in config/config.php to be something
- * other than phpsession, or this module will not work. SQL and memcache
- * work just fine. The tell tail sign of the problem is infinite browser
- * redirection when the SimpleSAMLphp login page should be presented.
- *
- * -------------------------------------------------------------------
- *
- * To use this put something like this into config/authsources.php:
- *
- *  'drupal-userpass' => array(
- *    'drupalauth:External',
- *
- *    // Whether to turn on debug
- *    'debug' => true,
- *
- *    // the URL of the Drupal logout page
- *    'drupal_logout_url' => 'https://www.example.com/drupal7/user/logout',
- *
- *    // the URL of the Drupal login page
- *    'drupal_login_url' => 'https://www.example.com/drupal7/user',
- *
- *    // Which attributes should be retrieved from the Drupal site.
- *
- *              'attributes' => array(
- *                                    array('drupaluservar'   => 'uid',  'callit' => 'uid'),
- *                                     array('drupaluservar' => 'name', 'callit' => 'cn'),
- *                                     array('drupaluservar' => 'mail', 'callit' => 'mail'),
- *                                     array('drupaluservar' => 'field_first_name',  'callit' => 'givenName'),
- *                                     array('drupaluservar' => 'field_last_name',   'callit' => 'sn'),
- *                                     array('drupaluservar' => 'field_organization','callit' => 'ou'),
- *                                     array('drupaluservar' => 'roles','callit' => 'roles'),
- *                                   ),
- *  ),
- *
- * Format of the 'attributes' array explained:
- *
- * 'attributes' can be an associate array of attribute names, or NULL, in which case
- * all attributes are fetched.
- *
- * If you want everything (except) the password hash do this:
- *    'attributes' => NULL,
- *
- * If you want to pick and choose do it like this:
- * 'attributes' => array(
- *          array('drupaluservar' => 'uid',  'callit' => 'uid),
- *                     array('drupaluservar' => 'name', 'callit' => 'cn'),
- *                     array('drupaluservar' => 'mail', 'callit' => 'mail'),
- *                     array('drupaluservar' => 'roles','callit' => 'roles'),
- *                      ),
- *
- *  The value for 'drupaluservar' is the variable name for the attribute in the
- *  Drupal user object.
- *
- *  The value for 'callit' is the name you want the attribute to have when it's
- *  returned after authentication. You can use the same value in both or you can
- *  customize by putting something different in for 'callit'. For an example,
- *  look at the entry for name above.
  */
 class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
-
-  /**
-   * Whether to turn on debugging
-   */
-  private $debug;
-
-  /**
-   * The Drupal user attributes to use, NULL means use all available
-   */
-  private $attributes;
-
-  /**
-   * The name of the cookie
-   */
-  private $cookie_name;
-
-  /**
-   * The cookie path
-   */
-  private $cookie_path;
-
-  /**
-   * The cookie salt
-   */
-  private $cookie_salt;
-
-  /**
-   * The logout URL of the Drupal site
-   */
-  private $drupal_logout_url;
-
-  /**
-   * The login URL of the Drupal site
-   */
-  private $drupal_login_url;
 
   /**
    * Dependency injection container
@@ -141,6 +46,7 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
       $request = Request::createFromGlobals();
       // The REQUEST_URI of the current request is meaningless. Override.
       // @see http://stackoverflow.com/a/22484670/4447064
+      // @todo - This could be a simpler callback to a page without needing to use render engine.
       $request->server->set('REQUEST_URI', '/');
       $kernel = DrupalKernel::createFromRequest($request, $classloader, 'prod');
       // @todo - Early test on module enabled or not.
@@ -153,7 +59,9 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
       $user = \Drupal::currentUser();
       chdir($pwd);
       $this->container = $kernel->getContainer();
+
     }
+    return $this;
   }
 
 	/**
@@ -169,21 +77,8 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
     /* Call the parent constructor first, as required by the interface. */
     parent::__construct($info, $config);
 
-    /* Get the configuration for this module */
-    $drupalAuthConfig = new sspmod_drupalauth_ConfigHelper($config,
-      'Authentication source ' . var_export($this->authId, TRUE));
-    $this->debug       = $drupalAuthConfig->getDebug();
-    $this->attributes  = $drupalAuthConfig->getAttributes();
-    $this->cookie_name = $drupalAuthConfig->getCookieName();
-    $this->drupal_logout_url = $drupalAuthConfig->getDrupalLogoutURL();
-    $this->drupal_login_url = $drupalAuthConfig->getDrupalLoginURL();
-    $ssp_config = SimpleSAML_Configuration::getInstance();
-    $this->cookie_path = '/' . $ssp_config->getValue('baseurlpath');
-    $this->cookie_salt = $ssp_config->getValue('secretsalt');
-
     $this->bootstrap();
   }
-
 
 	/**
 	 * Retrieve attributes for the user.
@@ -196,11 +91,11 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
       return array(
         'uid' => array($user->getUsername()),
         'displayName' => array($user->getDisplayName()),
+        'username' => array($user->getUsername()),
       );
     }
     return NULL;
 	}
-
 
 	/**
 	 * Log in using an external authentication helper.
@@ -253,9 +148,7 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
 		 *
 		 * Drupal will not redirect to an external URL. So, build a relative one.
 		 */
-    $globalConfig = SimpleSAML_Configuration::getInstance();
-    $baseURL = $globalConfig->getString('baseurlpath', 'simplesaml/');
-    $returnTo = '/' . $baseURL . 'drupalauth/resume.php?State=' . $stateId;
+    $returnTo = \Drupal::url('saml_idp.resume', array('State' => $stateId));
 		/*
 		 * Get the URL of the authentication page.
 		 *
@@ -286,20 +179,23 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
 	 *
 	 * This function resumes the authentication process after the user has
 	 * entered his or her credentials.
+   *
+   * @see \Drupal\saml_idp\Resume::resume()
 	 *
 	 * @param array &$state  The authentication state.
 	 */
 	public static function resume() {
-
 		/*
 		 * First we need to restore the $state-array. We should have the identifier for
 		 * it in the 'State' request parameter.
+		 *
+		 * @todo - Handle Request injection if this is on a CLI test?
 		 */
-		if (!isset($_REQUEST['State'])) {
+    $container = \Drupal::getContainer();
+    $request = $container->get('request_stack')->getCurrentRequest();
+		if (!$stateId = $request->query->get('State')) {
 			throw new SimpleSAML_Error_BadRequest('Missing "State" parameter.');
 		}
-		$stateId = (string)$_REQUEST['State'];
-
 		/*
 		 * Once again, note the second parameter to the loadState function. This must
 		 * match the string we used in the saveState-call above.
@@ -316,7 +212,7 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
 			 * The only way this should fail is if we remove or rename the authentication source
 			 * while the user is at the login page.
 			 */
-			throw new SimpleSAML_Error_Exception('Could not find authentication source with id ' . $state[self::AUTHID]);
+			throw new SimpleSAML_Error_Exception('Could not find authentication source.');
 		}
 
 		/*
@@ -332,7 +228,7 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
 		/*
 		 * OK, now we know that our current state is sane. Time to actually log the user in.
 		 *
-		 * First we check that the user is acutally logged in, and didn't simply skip the login page.
+		 * First we check that the user is actually logged in, and didn't simply skip the login page.
 		 */
 		$attributes = $source->getUser();
 		if ($attributes === NULL) {
@@ -342,7 +238,7 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
 			 * Here we simply throw an exception, but we could also redirect the user back to the
 			 * login page.
 			 */
-			throw new SimpleSAML_Error_Exception('User not authenticated after login page.');
+			throw new SimpleSAML_Error_Exception('User not authenticated after login attempt.');
 		}
 
 		/*
@@ -369,29 +265,9 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
 	public function logout(&$state) {
     assert('is_array($state)');
 
-    if (!session_id()) {
-      /* session_start not called before. Do it here. */
-      session_start();
+    if ($this->bootstrap()->getUser()) {
+      user_logout();
     }
-
-    /*
-     * In this example we simply remove the 'uid' from the session.
-     */
-    unset($_SESSION['uid']);
-
-    // Added armor plating, just in case
-    if (isset($_COOKIE[$this->cookie_name])) {
-      setcookie($this->cookie_name, "", time() - 3600, $this->cookie_path);
-
-    }
-
-
-    /*
-      * Redirect the user to the Drupal logout page
-      */
-    header('Location: ' . $this->drupal_logout_url);
-    die;
-
   }
 
 }
