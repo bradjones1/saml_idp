@@ -4,6 +4,7 @@
 
 use Drupal\Core\DrupalKernel;
 use Symfony\Component\HttpFoundation\Request;
+use Drupal\user\Entity\User;
 
 /**
  * Drupalath authentication source for using Drupal's login page.
@@ -88,12 +89,16 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
   private function getUser() {
     $user = $this->container->get('current_user')->getAccount();
     if ($user->id() != 0) {
-      return array(
+      $site_config = $this->container->get('config.factory')->get('system.site');
+      $attributes = array(
         'uid' => array($user->getUsername()),
+        // Return the UUID as it's guaranteed not to change and reduces clashes.
+        'uniqueIdentifier' => array(User::load($user->id())->uuid()),
         'displayName' => array($user->getDisplayName()),
-        'username' => array($user->getUsername()),
+        'eduPersonPrincipalName' => array($user->getUsername() . '@drupal.' . $site_config->get('uuid')),
         'mail' => array($user->getEmail()),
       );
+      $this->container->get('module_handler')->alter('saml_idp_attributes', $attributes);
     }
     return NULL;
   }
