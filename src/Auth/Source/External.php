@@ -90,15 +90,17 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
     $user = $this->container->get('current_user')->getAccount();
     if ($user->id() != 0) {
       $site_config = $this->container->get('config.factory')->get('system.site');
+      $user_entity = User::load($user->id());
       $attributes = array(
         'uid' => array($user->getUsername()),
         // Return the UUID as it's guaranteed not to change and reduces clashes.
-        'uniqueIdentifier' => array(User::load($user->id())->uuid()),
+        'uniqueIdentifier' => array('drupal-' . $user_entity->uuid()),
         'displayName' => array($user->getDisplayName()),
         'eduPersonPrincipalName' => array($user->getUsername() . '@drupal.' . $site_config->get('uuid')),
         'mail' => array($user->getEmail()),
       );
-      $this->container->get('module_handler')->alter('saml_idp_attributes', $attributes);
+      $this->container->get('module_handler')->alter('saml_idp_attributes', $attributes, $user_entity);
+      return $attributes;
     }
     return NULL;
   }
