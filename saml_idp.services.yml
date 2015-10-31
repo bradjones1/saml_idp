@@ -1,5 +1,0 @@
-services:
-  saml_idp.user_logout_subscriber:
-    class: 'Drupal\saml_idp\RouteSubscriber'
-    tags:
-      - { name: event_subscriber }

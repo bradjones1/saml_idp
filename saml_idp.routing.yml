@@ -7,17 +7,3 @@ saml_idp.resume:
   requirements:
     _method: GET
     _role: 'authenticated'
-
-saml_idp.logout:
-  path: '/saml_idp/logout'
-  defaults:
-    _controller: '\Drupal\saml_idp\Controller\Logout::logoutSSO'
-  requirements:
-    _user_is_logged_in: 'TRUE'
-
-saml_idp.logout_complete:
-  path: '/saml_idp/logout-complete'
-  defaults:
-    _controller: '\Drupal\saml_idp\Controller\Logout::logoutDrupal'
-  requirements:
-    _user_is_logged_in: 'FALSE'

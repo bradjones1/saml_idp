@@ -94,7 +94,7 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
       $attributes = array(
         'uid' => array($user->getUsername()),
         // Return the UUID as it's guaranteed not to change and reduces clashes.
-        'uniqueIdentifier' => array('drupal-' . $user_entity->uuid()),
+        'uniqueIdentifier' => array('drupal:' . $user_entity->uuid()),
         'displayName' => array($user->getDisplayName()),
         'eduPersonPrincipalName' => array($user->getUsername() . '@drupal.' . $site_config->get('uuid')),
         'mail' => array($user->getEmail()),
@@ -274,6 +274,9 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
     assert('is_array($state)');
 
     if ($this->bootstrap()->getUser()) {
+      // We may not have a session started, but SessionManager will throw
+      // an error if it tries to destroy an uninitialized session.
+      $this->container->get('session_manager')->start();
       user_logout();
     }
   }
