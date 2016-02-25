@@ -147,7 +147,7 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
      * $state-array saved in one location and restores it in another location,
      * and thus bypasses steps in the authentication process.
      */
-    $stateId = SimpleSAML_Auth_State::saveState($state, 'drupalauth:External');
+    $stateId = SimpleSAML_Auth_State::saveState($state, 'drupalauth:External', TRUE);
 
     /*
      * Now we generate an URL the user should return to after authentication.
