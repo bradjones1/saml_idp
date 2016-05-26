@@ -3,6 +3,9 @@
 // This class is not namespaced as simplesamlphp does not namespace its classes.
 
 use Drupal\Core\DrupalKernel;
+use Drupal\Core\Site\Settings;
+use Drupal\Core\Url;
+use SimpleSAML\Utils\HTTP;
 use Symfony\Component\HttpFoundation\Request;
 use Drupal\user\Entity\User;
 
@@ -22,8 +25,17 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
 
   /**
    * Dependency injection container
+   * 
+   * @var \Symfony\Component\DependencyInjection\ContainerInterface
    */
   private $container;
+
+  /**
+   * The Drupal application kernel
+   * 
+   * @var DrupalKernel
+   */
+  private $kernel;
 
   /**
    * Bootstrap Drupal, e.g., if we're being called from simplesamlphp.
@@ -45,21 +57,17 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
         // @todo - Catch a failed import.
       }
       $request = Request::createFromGlobals();
-      // The REQUEST_URI of the current request is meaningless. Override.
-      // @see http://stackoverflow.com/a/22484670/4447064
-      // @todo - This could be a simpler callback to a page without needing to use render engine.
-      $request->server->set('REQUEST_URI', '/');
-      $kernel = DrupalKernel::createFromRequest($request, $classloader, 'prod');
-      // @todo - Early test on module enabled or not.
-
-      // We change directories to the Drupal root, now that we can detect it.
-      // Drupal may try to find/save files to paths relative to the root.
-      // Must get it off $kernel as we can't get at the container, yet.
-      chdir($kernel->getAppRoot());
-      $kernel->handle($request);
-      $user = \Drupal::currentUser();
+      $request->server->set('SCRIPT_FILENAME', '/');
+      $this->kernel = new DrupalKernel('prod', $classloader);
+      $app_root = $this->kernel->getAppRoot();
+      chdir($app_root);
+      require_once 'core/includes/bootstrap.inc';
+      $this->kernel->setSitePath($this->kernel->findSitePath($request));
+      Settings::initialize($app_root, $this->kernel->getSitePath(), $classloader);
+      $this->kernel->invalidateContainer();
+      $this->kernel->prepareLegacyRequest($request);
       chdir($pwd);
-      $this->container = $kernel->getContainer();
+      $this->container = $this->kernel->getContainer();
 
     }
     return $this;
@@ -87,8 +95,9 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
    * @return array|NULL  The user's attributes, or NULL if the user isn't authenticated.
    */
   private function getUser() {
+    /* @var \Drupal\Core\Session\AccountInterface $user */
     $user = $this->container->get('current_user')->getAccount();
-    if ($user->id() != 0) {
+    if (!$user->isAnonymous()) {
       $site_config = $this->container->get('config.factory')->get('system.site');
       $user_entity = User::load($user->id());
       $attributes = array(
@@ -156,15 +165,11 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
      *
      * Drupal will not redirect to an external URL. So, build a relative one.
      */
-    $returnTo = \Drupal::url('saml_idp.resume', array('State' => $stateId));
+    $returnTo = Url::fromRoute('saml_idp.resume', array('State' => $stateId))->toString();
     /*
      * Get the URL of the authentication page.
-     *
-     * Here we use the getModuleURL function again, since the authentication page
-     * is also part of this module, but in a real example, this would likely be
-     * the absolute URL of the login page for the site.
      */
-    $login = \Drupal::url('user.login', array(), array('absolute' => TRUE));
+    $login = Url::fromRoute('user.login')->toString();
 
     /*
      * The redirect to the authentication page.
@@ -172,7 +177,7 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
      * Note the 'ReturnTo' parameter. This must most likely be replaced with
      * the real name of the parameter for the login page.
      */
-    SimpleSAML_Utilities::redirectTrustedURL($login, array(
+    HTTP::redirectTrustedURL($login, array(
       'destination' => $returnTo,
     ));
 
