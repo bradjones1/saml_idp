@@ -57,7 +57,7 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
         // @todo - Catch a failed import.
       }
       $request = Request::createFromGlobals();
-      $request->server->set('SCRIPT_FILENAME', '/');
+      $request->server->set('SCRIPT_FILENAME', '/index.php');
       $this->kernel = new DrupalKernel('prod', $classloader);
       $app_root = $this->kernel->getAppRoot();
       chdir($app_root);
@@ -169,7 +169,7 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
     /*
      * Get the URL of the authentication page.
      */
-    $login = Url::fromRoute('user.login', [], ['absolute' => TRUE])->toString();
+    $login = Url::fromRoute('user.login')->toString();
 
     /*
      * The redirect to the authentication page.
