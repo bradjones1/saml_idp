@@ -9,7 +9,7 @@ module and as such does not, out of the box, provide any working functionality.
 
 1. It is recommended to install with composer, to manage dependencies including
   simplesamlphp itself. See immediately below. Try [docker-drupal](https://github.com/BradJonesLLC/docker-drupal)
-1. Run the post-Install script, `Drupal\saml_idp\Installer::postInstall()`, by
+1. Run the post-Install script, `Drupal\saml_idp\Install::postInstall`, by
   adding it to your project's `composer.json` file under `post-install-cmd`.
   If you don't do so, you will need to manually install and enable the "drupalauth"
   module in simplesamlphp.

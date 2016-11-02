@@ -25,14 +25,14 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
 
   /**
    * Dependency injection container
-   * 
+   *
    * @var \Symfony\Component\DependencyInjection\ContainerInterface
    */
   private $container;
 
   /**
    * The Drupal application kernel
-   * 
+   *
    * @var DrupalKernel
    */
   private $kernel;
@@ -169,7 +169,7 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
     /*
      * Get the URL of the authentication page.
      */
-    $login = Url::fromRoute('user.login')->toString();
+    $login = Url::fromRoute('user.login', [], ['absolute' => TRUE])->toString();
 
     /*
      * The redirect to the authentication page.
