@@ -11,8 +11,12 @@ module and as such does not, out of the box, provide any working functionality.
   simplesamlphp itself. See immediately below. Try [docker-drupal](https://github.com/BradJonesLLC/docker-drupal)
 1. Run the post-Install script, `Drupal\saml_idp\Install::postInstall`, by
   adding it to your project's `composer.json` file under `post-install-cmd`.
-  If you don't do so, you will need to manually install and enable the "drupalauth"
-  module in simplesamlphp.
+  If you don't do so, you will need to manually enable the "drupalauth"
+  module in simplesamlphp by creating an empty text file at
+  `vendor/simplesamlphp/simplesamlphp/modules/drupalauth/default-enable`.
+  Do not be mislead by the "drupalauth" project on Drupal.org, which is for
+  Drupal 7. SSP only needs to be aware of the presence of the SSP auth module,
+  which is autoloaded from the Drupal module.
 1. Configure simplesamlphp's `authsources.php` to use `drupalauth:External` as an
   authentication service. A sample is contained in the `config-dist` directory.
 1. Configure a `cookie_domain` value in your `services.yml` file (and any local
@@ -36,7 +40,7 @@ module and as such does not, out of the box, provide any working functionality.
   you are using the site defined at `sites/default`.
 
 ## Copyright and License
-&copy; 2015 by Brad Jones LLC. Licensed under GPL 2.
+&copy; 2015-2017 by Brad Jones LLC. Licensed under GPL 2.
 
 Adapted from the [drupalauth module](https://code.google.com/p/drupalauth/) developed
 by Steve Moitozo. Little if any of the original code remains due to the transition
