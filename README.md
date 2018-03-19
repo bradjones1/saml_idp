@@ -40,7 +40,7 @@ module and as such does not, out of the box, provide any working functionality.
   you are using the site defined at `sites/default`.
 
 ## Copyright and License
-&copy; 2015-2017 by Brad Jones LLC. Licensed under GPL 2.
+&copy; 2015-2018 by Brad Jones LLC. Licensed under GPL 2.
 
 Adapted from the [drupalauth module](https://code.google.com/p/drupalauth/) developed
 by Steve Moitozo. Little if any of the original code remains due to the transition

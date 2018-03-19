@@ -68,7 +68,6 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
       $this->kernel->prepareLegacyRequest($request);
       chdir($pwd);
       $this->container = $this->kernel->getContainer();
-
     }
     return $this;
   }
