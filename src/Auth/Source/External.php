@@ -1,13 +1,12 @@
 <?php
 
-// This class is not namespaced as simplesamlphp does not namespace its classes.
+// This class is not namespaced as simplesamlphp does not namespace module classes.
 
 use Drupal\Core\DrupalKernel;
-use Drupal\Core\Site\Settings;
 use Drupal\Core\Url;
 use SimpleSAML\Utils\HTTP;
-use Symfony\Component\HttpFoundation\Request;
 use Drupal\user\Entity\User;
+use Symfony\Component\HttpFoundation\Request;
 
 /**
  * Drupalath authentication source for using Drupal's login page.
@@ -41,32 +40,23 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
    * Bootstrap Drupal, e.g., if we're being called from simplesamlphp.
    * @see index.php
    */
-  private function bootstrap() {
+  protected function bootstrap() {
     try {
       $this->container = \Drupal::getContainer();
     }
     catch (Exception $e) {
-      // If we're here, this script is being called from simplesamlphp, not Drupal.
-      // We will find the autoloader, then, relative to that library.
-      $pwd = getcwd();
-      $autoloader = substr($pwd, 0, strpos($pwd, 'simplesamlphp/www')) . '../autoload.php';
-      // Below is adapted from SSP's autoloader script.
-      // SSP is loaded as a library.
-      if (file_exists($autoloader)) {
-        $classloader = require $autoloader;
-        // @todo - Catch a failed import.
+      $finder = new \DrupalFinder\DrupalFinder();
+      if ($finder->locateRoot(getcwd())) {
+        $classloader = require $finder->getVendorDir() . '/autoload.php';
       }
+      else {
+        throw new Exception('Could not find Drupal root.');
+      }
+      DrupalKernel::bootEnvironment($finder->getDrupalRoot());
       $request = Request::createFromGlobals();
       $request->server->set('SCRIPT_FILENAME', '/index.php');
-      $this->kernel = new DrupalKernel('prod', $classloader);
-      $app_root = $this->kernel->getAppRoot();
-      chdir($app_root);
-      require_once 'core/includes/bootstrap.inc';
-      $this->kernel->setSitePath($this->kernel->findSitePath($request));
-      Settings::initialize($app_root, $this->kernel->getSitePath(), $classloader);
-      $this->kernel->invalidateContainer();
+      $this->kernel = DrupalKernel::createFromRequest($request, $classloader, 'prod');
       $this->kernel->prepareLegacyRequest($request);
-      chdir($pwd);
       $this->container = $this->kernel->getContainer();
     }
     return $this;

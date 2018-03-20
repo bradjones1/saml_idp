@@ -15,7 +15,7 @@
         }
     ],
     "require": {
-        "simplesamlphp/simplesamlphp": ">1.13.2",
+        "simplesamlphp/simplesamlphp": "^1.15",
         "webflo/drupal-finder": "^1"
     },
     "autoload": {
