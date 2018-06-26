@@ -38,6 +38,9 @@ module and as such does not, out of the box, provide any working functionality.
   sites configuration to allow Drupal to find the correct site configuration to
   use. If you do not have a `sites/sites.php` file (as is typical) Drupal will assume
   you are using the site defined at `sites/default`.
+- If you need custom code to execute on initial authentication or reauthentication,
+  implement the hooks `hook_saml_idp_login_completed` and `hook_saml_idp_reauthenticated`
+  in your modules.
 
 ## Copyright and License
 &copy; 2015-2018 by Brad Jones LLC. Licensed under GPL 2.

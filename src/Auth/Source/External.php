@@ -249,7 +249,7 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
      */
 
     $state['Attributes'] = $attributes;
-    SimpleSAML_Auth_Source::completeAuth($state);
+    self::completeAuth($state);
 
     /*
      * The completeAuth-function never returns, so we never get this far.
@@ -257,6 +257,35 @@ class sspmod_drupalauth_Auth_Source_External extends SimpleSAML_Auth_Source {
     assert('FALSE');
   }
 
+
+  /**
+   * {@inheritdoc}
+   */
+  public function reauthenticate(array &$state) {
+    parent::reauthenticate($state);
+    // Fire hook for custom login actions.
+    \Drupal::getContainer()->get('module_handler')->invokeAll('saml_idp_reauthenticated', [$state]);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function completeAuth(&$state) {
+    assert('is_array($state)');
+    assert('array_key_exists("LoginCompletedHandler", $state)');
+
+    SimpleSAML_Auth_State::deleteState($state);
+
+    $func = $state['LoginCompletedHandler'];
+    assert('is_callable($func)');
+
+    // Fire hook for custom login actions
+    // (This function is otherwise identical to the parent)
+    \Drupal::getContainer()->get('module_handler')->invokeAll('saml_idp_login_completed', [$state]);
+
+    call_user_func($func, $state);
+    assert(FALSE);
+  }
 
   /**
    * This function is called when the user start a logout operation, for example
